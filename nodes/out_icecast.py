@@ -6,22 +6,22 @@ class IcecastOut(Node):
     stream_url: str
     stream: Optional[subprocess.Popen[str]] = None
     
-    CONFIG_FIELDS = ('stream_url',)
+    PROP_FIELDS = ('stream_url',)
 
-    def __init__(self, id: str, config: Mapping[str, str]):
-        Node.__init__(self, id, config)
-        self.stream_url = config['stream_url']
+    def __init__(self, id: str, props: Mapping[str, str]):
+        Node.__init__(self, id, props)
+        self.stream_url = props['stream_url']
         self.INPUTS = [LinkPort(self, "0")]
 
-    def update(self, config: Mapping[str, str]):
-        super().update(config)
-        self.stream_url = config['stream_url']
+    def update(self, props: Mapping[str, str]):
+        super().update(props)
+        self.stream_url = props['stream_url']
         if self.stream is not None:
             self.shutdown()
             self.start()
 
     def start(self):
-        self.cmd = subprocess.Popen([
+        self.stream = subprocess.Popen([
             "ffmpeg",
             "-hide_banner",
             "-loglevel",
@@ -46,8 +46,8 @@ class IcecastOut(Node):
                 break
     
     def shutdown(self):
-        if self.cmd is not None:
-            self.cmd.send_signal(signal.SIGQUIT)
+        if self.stream is not None:
+            self.stream.send_signal(signal.SIGQUIT)
     
     def get_input_ports(self, pseudo: LinkPort):
-        return (self.id + ':input_1', self.id + ':input_2')
+        return [(self.id + ':input_1', self.id + ':input_2')]

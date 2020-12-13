@@ -1,125 +1,157 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 import toml
 import re
 import jack
-import time
 import atexit
+import logging
+
+logger = logging.getLogger(__name__)
 
 from nodes import *
 
-jack_client = jack.Client("selectrator")
 
-all_nodes: Dict[str, Dict[str, Node]] = {}
-all_links: List[Tuple[LinkPort, LinkPort]] = []
+class PatchBayState:
+    jack_client = jack.Client("selectrator")
 
+    all_nodes: Dict[str, Dict[str, Node]] = {}
+    all_links: List[Tuple[LinkPort, LinkPort]] = []
 
-@atexit.register
-def cleanup():
-    global all_nodes, all_links
-    for instances in all_nodes.values():
-        for instance in instances.values():
-            instance.reconcile_links([])
-            instance.shutdown()
+    _ctx: PatchBayContext
 
+    def __init__(self):
+        self._ctx = PatchBayContext(self)
+        atexit.register(self.cleanup)
 
-def load_state_from_toml(file_path: str):
-    global all_nodes, jack_client, all_links
-    data = toml.load(file_path)
+    def cleanup(self):
+        for instances in self.all_nodes.values():
+            for instance in instances.values():
+                instance.reconcile_links([])
+                instance.shutdown()
 
-    new_instances: List[Node] = []
-    for typename in data.keys():
-        if typename == "links":
-            continue
-        klass = globals()[typename]
+    def load_state_from_toml(self, file_path: str):
+        data = toml.load(file_path)
 
-        for id_part, cfg in data[typename].items():
-            id = typename + "." + id_part
-            all_nodes.setdefault(typename, {})
+        new_instances: List[Node] = []
+        for typename in data.keys():
+            if typename == "links":
+                continue
+            klass = globals()[typename]
 
-            if id_part not in all_nodes[typename]:
-                instance = klass(id_part, cfg)
-                instance._jack = jack_client
-                all_nodes[typename][id_part] = instance
-                new_instances.append(instance)
+            for id_part, cfg in data[typename].items():
+                self.all_nodes.setdefault(typename, {})
 
-    for instance in new_instances:
-        instance.start()
+                if id_part not in self.all_nodes[typename]:
+                    instance = klass(id_part, cfg)
+                    instance._jack = self.jack_client
+                    instance._ctx = self._ctx
+                    self.all_nodes[typename][id_part] = instance
+                    new_instances.append(instance)
 
-    link_pattern = re.compile(r"([^.]+)\.([^\[]+)\[([^\]]+)\]")
+        logger.debug("load_state_from_toml: starting")
+        self._ctx._ignore_reconciles = True
+        for instance in new_instances:
+            logger.debug(f"load_state_from_toml: starting {instance}")
+            instance.start()
 
-    for link in data["links"]:
-        src_match = link_pattern.match(link["from"])
-        if not src_match:
-            raise Exception(f'Malformed link \'{link["from"]}\'')
-        tgt_match = link_pattern.match(link["to"])
-        if not tgt_match:
-            raise Exception(f'Malformed link \'{link["to"]}\'')
+        link_pattern = re.compile(r"([^.]+)\.([^\[]+)\[([^\]]+)\]")
 
-        src_type, src_id, src_port_id = src_match.group(1, 2, 3)
-        tgt_type, tgt_id, tgt_port_id = tgt_match.group(1, 2, 3)
+        for link in data["links"]:
+            src_match = link_pattern.match(link["from"])
+            if not src_match:
+                raise Exception(f'Malformed link \'{link["from"]}\'')
+            tgt_match = link_pattern.match(link["to"])
+            if not tgt_match:
+                raise Exception(f'Malformed link \'{link["to"]}\'')
 
-        src = all_nodes[src_type][src_id]
-        src_port = [port for port in src.OUTPUTS if port.id == src_port_id][0]
-        tgt = all_nodes[tgt_type][tgt_id]
-        tgt_port = [port for port in tgt.INPUTS if port.id == tgt_port_id][0]
+            src_type, src_id, src_port_id = src_match.group(1, 2, 3)
+            tgt_type, tgt_id, tgt_port_id = tgt_match.group(1, 2, 3)
 
-        all_links.append((src_port, tgt_port))
+            src = self.all_nodes[src_type][src_id]
+            src_port = [port for port in src.OUTPUTS if port.id == src_port_id][0]
+            tgt = self.all_nodes[tgt_type][tgt_id]
+            tgt_port = [port for port in tgt.INPUTS if port.id == tgt_port_id][0]
 
+            logger.debug(f"load_state_from_toml: loaded link {src_port}->{tgt_port}")
 
-def write_state_to_toml(file_path: str):
-    global all_nodes, all_links
-    result = {}
-    for typename, nodes in all_nodes.items():
-        result[typename] = {}
-        for id_part, node in nodes.items():
-            result[typename][id_part] = node._config
-    
-    result['links'] = []
-    for src, tgt in all_links:
-        from_str = f"{src.node.id}[{src.id}]"
-        to_str = f"{tgt.node.id}[{tgt.id}]"
-        result['links'].append({
-            'from': from_str,
-            'to': to_str
-        })
-    
-    with open(file_path, 'w') as fd:
-        toml.dump(result, fd)
+            self.all_links.append((src_port, tgt_port))
+            src_port.links_as_src.append(tgt_port)
+            tgt_port.links_as_tgt.append(src_port)
+            logger.debug(f"load_state_from_toml: {src_port} links_as_src now {src_port.links_as_src}")
+            logger.debug(f"load_state_from_toml: {tgt_port} links_as_tgt now {tgt_port.links_as_tgt}")
 
+        logger.debug("load_state_from_toml: reconciling")
+        self.reconcile_all_links()
 
-def reconcile_all_links():
-    global all_nodes, all_links
-    # we set up this temporary dict to avoid needing a quadratic loop over all_links
-    links_by_source: Dict[Tuple[str, str], List[Tuple[LinkPort, LinkPort]]] = {}
+        for instance in new_instances:
+            logger.debug(f"load_state_from_toml: late-starting {instance}")
+            instance.late_start()
+        
+        self._ctx._ignore_reconciles = False
 
-    for src_port, tgt_port in all_links:
-        src_type = src_port.node.__class__.__name__
-        src_id = src_port.node._id
-        links_by_source.setdefault((src_type, src_id), [])
-        links_by_source[(src_type, src_id)].append((src_port, tgt_port))
+    def write_state_to_toml(self, file_path: str):
+        result = {}
+        for typename, nodes in self.all_nodes.items():
+            result[typename] = {}
+            for id_part, node in nodes.items():
+                result[typename][id_part] = node._props
 
-    for node_type, node_id in links_by_source.keys():
-        node = all_nodes[node_type][node_id]
-        node.reconcile_links(links_by_source[(node_type, node_id)])
+        result["links"] = []
+        for src, tgt in self.all_links:
+            from_str = f"{src.node.id}[{src.id}]"
+            to_str = f"{tgt.node.id}[{tgt.id}]"
+            result["links"].append({"from": from_str, "to": to_str})
 
+        with open(file_path, "w") as fd:
+            toml.dump(result, fd)
 
-def init():
-    load_state_from_toml("init.toml")
-    reconcile_all_links()
-    write_state_to_toml('state.toml')
+    def reconcile_all_links(self):
+        logger.debug("Reconciling all links")
+        # we set up this temporary dict to avoid needing a quadratic loop over all_links
+        links_by_source: Dict[Tuple[str, str], List[Tuple[LinkPort, LinkPort]]] = {}
 
+        for src_port, tgt_port in self.all_links:
+            src_type = src_port.node.__class__.__name__
+            src_id = src_port.node._id
+            links_by_source.setdefault((src_type, src_id), [])
+            links_by_source[(src_type, src_id)].append((src_port, tgt_port))
 
-def link(source: LinkPort, target: LinkPort):
-    global all_links
-    if (source, target) in all_links:
-        return
-    all_links.append((source, target))
-    reconcile_all_links()
+        for node_type, node_id in links_by_source.keys():
+            node = self.all_nodes[node_type][node_id]
+            node.reconcile_links(links_by_source[(node_type, node_id)])
 
+    def reconcile_node(self, node: Union[Node, str]):
+        self._ctx._ignore_reconciles = True
+        logger.debug(f"Reconciling {node}")
+        if not isinstance(node, Node):
+            typename, id = node.split(".")
+            node = self.all_nodes[typename][id]
 
-def unlink(source: LinkPort, target: LinkPort):
-    global all_links
-    if (source, target) not in all_links:
-        return
-    all_links.remove((source, target))
-    reconcile_all_links()
+        links: List[Tuple[LinkPort, LinkPort]] = []
+
+        for src, tgt in self.all_links:
+            if src.node.id == node.id:
+                links.append((src, tgt))
+
+        node.reconcile_links(links)
+        logger.debug(f"reconcile of {node} done")
+        self._ctx._ignore_reconciles = False
+
+    def init(self):
+        self.load_state_from_toml("init.toml")
+        self.write_state_to_toml("state.toml")
+
+    def link(self, source: LinkPort, target: LinkPort):
+        if (source, target) in self.all_links:
+            return
+        self.all_links.append((source, target))
+        source.links_as_src.append(target)
+        target.links_as_src.remove(source)
+        self.reconcile_all_links()
+
+    def unlink(self, source: LinkPort, target: LinkPort):
+        if (source, target) not in self.all_links:
+            return
+        self.all_links.remove((source, target))
+        source.links_as_src.remove(target)
+        target.links_as_tgt.remove(source)
+        self.reconcile_all_links()
