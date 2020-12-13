@@ -113,13 +113,13 @@ def link(source: LinkPort, target: LinkPort):
     global all_links
     if (source, target) in all_links:
         return
-    source.node.link_to(source, target)
     all_links.append((source, target))
+    reconcile_all_links()
 
 
 def unlink(source: LinkPort, target: LinkPort):
     global all_links
     if (source, target) not in all_links:
         return
-    source.node.unlink(source, target)
     all_links.remove((source, target))
+    reconcile_all_links()
