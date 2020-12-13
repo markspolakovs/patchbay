@@ -16,10 +16,9 @@ all_links: List[Tuple[LinkPort, LinkPort]] = []
 @atexit.register
 def cleanup():
     global all_nodes, all_links
-    for source, target in all_links:
-        source.node.unlink(source, target)
     for instances in all_nodes.values():
         for instance in instances.values():
+            instance.reconcile_links([])
             instance.shutdown()
 
 
