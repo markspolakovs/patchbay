@@ -1,0 +1,9 @@
+[IcecastOut.testytest]
+stream_url = "icecast://source:LMAO_NOPE@audio.ury.org.uk:7070/testytest"
+
+[MPV.test]
+source = "/home/marks/Music/Twitch-cleared music/Stoneblue ft Emma Hewitt - Hypnotized (Markus Schulz Remix).mp3"
+
+[[links]]
+from = "MPV.test[0]"
+to = "IcecastOut.testytest[0]"

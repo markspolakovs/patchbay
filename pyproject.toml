@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "patchbay"
+version = "0.1.0"
+description = ""
+authors = ["Marks Polakovs <marks@markspolakovs.me>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+JACK-Client = "^0.5.3"
+python-ffmpeg = "^1.0.11"
+toml = "^0.10.2"
+
+[tool.poetry.dev-dependencies]
+black = {version = "^20.8b1", allow-prereleases = true}
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
