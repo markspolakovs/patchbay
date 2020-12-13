@@ -1,12 +1,8 @@
-from typing import Any, Callable, List, Mapping, Optional, Tuple, TypeVar, Union
+from typing import Any, List, Mapping, Optional, Tuple
 import subprocess
 from ._node import Node, LinkPort
 import jack
 import time
-
-T = TypeVar('T')
-def flatten(src: List[Union[T, List[T]]]) -> List[T]:
-    return [item for sublist in src for item in sublist]
 
 
 class MPV(Node):
