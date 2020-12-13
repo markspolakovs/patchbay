@@ -1,6 +1,8 @@
 from typing import Mapping, Optional
 import subprocess, signal
 from ._node import Node, LinkPort
+import logging
+logger = logging.getLogger(__name__)
 
 class IcecastOut(Node):
     stream_url: str
@@ -44,6 +46,7 @@ class IcecastOut(Node):
             ports = self._jack.get_ports(rf'{self.id}:input_(1|2)', is_audio=True)
             if len(ports) == 2:
                 break
+        logger.info("ffmpeg ready")
     
     def shutdown(self):
         if self.stream is not None:

@@ -4,7 +4,6 @@ import re
 import jack
 import atexit
 import logging
-
 logger = logging.getLogger(__name__)
 
 from nodes import *
@@ -48,7 +47,6 @@ class PatchBayState:
                     new_instances.append(instance)
 
         logger.debug("load_state_from_toml: starting")
-        self._ctx._ignore_reconciles = True
         for instance in new_instances:
             logger.debug(f"load_state_from_toml: starting {instance}")
             instance.start()
@@ -85,8 +83,6 @@ class PatchBayState:
         for instance in new_instances:
             logger.debug(f"load_state_from_toml: late-starting {instance}")
             instance.late_start()
-        
-        self._ctx._ignore_reconciles = False
 
     def write_state_to_toml(self, file_path: str):
         result = {}

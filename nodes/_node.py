@@ -34,21 +34,16 @@ class PatchBayContext:
     state: Any  # importing PatchBayState here causes a circular import
     logger = logging.Logger('PatchBayContext')
 
-    _ignore_reconciles = True
-
     def __init__(self, state: Any):
         self.state = state
 
     def reconcile_all_links(self):
-        if not self._ignore_reconciles:
-            self.state.reconcile_all_links()
+        self.logger.debug('request reconcile-all')
+        self.state.reconcile_all_links()
     
     def reconcile_node(self, node: Union["Node", str]):
         self.logger.debug(f"requested reconciliation for {node}")
-        if not self._ignore_reconciles:
-            self.state.reconcile_node(node)
-        else:
-            self.logger.debug("but it got ignored")
+        self.state.reconcile_node(node)
 
 
 class Node:
