@@ -74,8 +74,6 @@ class PatchBayState:
             self.all_links.append((src_port, tgt_port))
             src_port.links_as_src.append(tgt_port)
             tgt_port.links_as_tgt.append(src_port)
-            logger.debug(f"load_state_from_toml: {src_port} links_as_src now {src_port.links_as_src}")
-            logger.debug(f"load_state_from_toml: {tgt_port} links_as_tgt now {tgt_port.links_as_tgt}")
 
         logger.debug("load_state_from_toml: reconciling")
         self.reconcile_all_links()

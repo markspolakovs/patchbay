@@ -20,12 +20,14 @@ class Mux(Node):
         super().update(props)
         old_active = self.active
         self.active = int(props["active"])
+
         if self.active != old_active:
-            logger.debug(f"mux: looping over {self.INPUTS}")
+            # logger.debug(f"mux: looping over {self.INPUTS}")
             for in_port in self.INPUTS:
-                logger.debug(f"mux: and in there, {in_port.links_as_tgt}")
+                # logger.debug(f"mux: and in there, {in_port.links_as_tgt}")
+    
                 for in_link in in_port.links_as_tgt:
-                    logger.debug(f"still looping over {self.INPUTS}, and in there, on {in_port}, {in_port.links_as_tgt}")
+                    # logger.debug(f"still looping over {self.INPUTS}, and in there, on {in_port}, {in_port.links_as_tgt}")
                     logger.debug(f"update: requesting reconcile of {in_link.node} for {in_link}")
                     self._ctx.reconcile_node(in_link.node)
 

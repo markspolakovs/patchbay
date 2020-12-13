@@ -63,24 +63,18 @@ class MPV(Node):
     def reconcile_links(self, links: List[Tuple[LinkPort, LinkPort]]):
         assert self.ports is not None
         for channel in range(2):
-            print(f"MPV reconciling channel {channel}")
             existing_connections = self._jack.get_all_connections(self.ports[channel])
             existing_names = [port.name for port in existing_connections]
             for pair in links:
                 link = pair[1]
-                print(f"getting input ports for {link.node}")
                 new_conn_names = [x[channel] for x in link.node.get_input_ports(link)]
-                print("; got", new_conn_names)
         
                 # out with the old
                 for old in existing_connections:
                     if old.name not in new_conn_names:
-                        print(f"destroying {old.name}")
                         self._jack.disconnect(self.ports[channel], old)
                 
                 # and in with the new
                 for new_conn in new_conn_names:
                     if new_conn not in existing_names:
-                        print(f"creating {new_conn}")
                         self._jack.connect(self.ports[channel], new_conn)
-        print("MPV: reconcile done")
