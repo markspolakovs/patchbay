@@ -86,25 +86,6 @@ optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
-name = "pyee"
-version = "8.1.0"
-description = "A port of node.js's EventEmitter to python."
-category = "main"
-optional = false
-python-versions = "*"
-
-[[package]]
-name = "python-ffmpeg"
-version = "1.0.11"
-description = "A python interface for FFmpeg"
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-pyee = "*"
-
-[[package]]
 name = "regex"
 version = "2020.11.13"
 description = "Alternative regular expression module, to replace re."
@@ -139,7 +120,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "9b6fddca8e84968c4d5d37532afc14a5e31aec103828a9f9e0071b144a0af84d"
+content-hash = "d0e076d09e019e9075b80962eaecd15f10129ce7f61c5f7284c598a48f92528b"
 
 [metadata.files]
 appdirs = [
@@ -206,14 +187,6 @@ pathspec = [
 pycparser = [
     {file = "pycparser-2.20-py2.py3-none-any.whl", hash = "sha256:7582ad22678f0fcd81102833f60ef8d0e57288b6b5fb00323d101be910e35705"},
     {file = "pycparser-2.20.tar.gz", hash = "sha256:2d475327684562c3a96cc71adf7dc8c4f0565175cf86b6d7a404ff4c771f15f0"},
-]
-pyee = [
-    {file = "pyee-8.1.0-py2.py3-none-any.whl", hash = "sha256:383973b63ad7ed5e3c0311f8b179c52981f9e7b3eaea0e9a830d13ec34dde65f"},
-    {file = "pyee-8.1.0.tar.gz", hash = "sha256:92dacc5bd2bdb8f95aa8dd2585d47ca1c4840e2adb95ccf90034d64f725bfd31"},
-]
-python-ffmpeg = [
-    {file = "python-ffmpeg-1.0.11.tar.gz", hash = "sha256:bdf38ba5052f7128241a217a4411664e1047afa959416b30f133a3a349428e4c"},
-    {file = "python_ffmpeg-1.0.11-py3-none-any.whl", hash = "sha256:4eb946e7457ff5db9ce1cbe138ecdbe53e7bfe4a15a78b39051fba6b64919f36"},
 ]
 regex = [
     {file = "regex-2020.11.13-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:8b882a78c320478b12ff024e81dc7d43c1462aa4a3341c754ee65d857a521f85"},
